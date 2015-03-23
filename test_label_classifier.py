@@ -48,19 +48,16 @@ X_test = [
 
 target_names = ['中华人民共和国', '美利坚合众国']
 
-count_v1 = CountVectorizer(stop_words='english', max_df=0.5)
-counts_train = count_v1.fit_transform(X_train)
-print 'The shape of train is ' + repr(counts_train.shape)
 
-count_v2 = CountVectorizer(vocabulary=count_v1.vocabulary_)
-counts_test = count_v2.fit_transform(X_test)
-print 'the shape of test is ' + repr(counts_test.shape)
+classifier = Pipeline([
+    ('counter', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('clf', OneVsRestClassifier(LinearSVC())),
+])
 
-tfidftransformer = TfidfTransformer()
+classifier.fit(X_train, y_train)
+prediction = classifier.predict(X_test)
 
-tfidf_train = tfidftransformer.fit(counts_train).transform(counts_train)
-tfidf_test = tfidftransformer.fit(counts_test).transform(counts_test)
+for i, label in enumerate(prediction):
+    print X_test[i], '======>', ', '.join([target_names[_] for _ in label])
 
-
-print tfidf_train
-print tfidf_test
