@@ -7,8 +7,8 @@ import time
 import math
 from settings import DATA_DIR
 
-
 RATING = {}
+
 
 def init():
     global RATING
@@ -83,6 +83,32 @@ def get_recommendations(person, n=5):
     ranks.sort(key=lambda x: x[0], reverse=True)
 
     return ranks[:n]
+
+
+def get_average(person):
+    global RATING
+    sum = 0
+    count = 0
+    for item in RATING[person]:
+        sum += RATING[person][item]
+        count += 1
+    return sum / count if count != 0 else 3
+
+
+def get_rating(person, movie, n=20):
+    global RATING
+    users = top_matches(person, n=n)
+    average_of_user = get_average(person)
+    sim_sums = 0
+    jiaquan_sums = 0
+    for sim, other in users:
+        average_of_other = get_average(other)
+        sim_sums += sim
+        jiaquan_sums += (RATING[other][movie] - average_of_other) * sim
+    try:
+        return average_of_user + jiaquan_sums / sim_sums
+    except:
+        return average_of_user
 
 
 if __name__ == '__main__':
