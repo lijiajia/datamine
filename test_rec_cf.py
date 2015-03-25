@@ -55,65 +55,74 @@ def sim_pearson(person1, person2):
     return num1 / num2
 
 
-def top_matches(person, n=20):
+def top_matches(person, movie=None, top_n=None):
     global RATING
-    scores = [(sim_pearson(person, other), other) for other in RATING if other != person]
+    if movie is None:
+        rating_list = [_ for _ in RATING]
+    else:
+        rating_list = [_ for _ in RATING if movie in RATING[_]]
+    scores = [(sim_pearson(person, other), other) for other in rating_list if other != person]
     scores.sort(key=lambda x: x[0], reverse=True)
-    return scores[:n]
-
-
-def get_recommendations(person, n=5):
-    global RATING
-    totals = {}
-    sim_sums = {}
-
-    for other in RATING:
-        if other == person:
-            continue
-        sim = sim_pearson(person, other)
-        if sim <= 0:
-            continue
-        for item in RATING[other]:
-            if item not in RATING[person]:
-                totals.setdefault(item, 0)
-                totals[item] += RATING[other][item] * sim
-                sim_sums.setdefault(item, 0)
-                sim_sums[item] += sim
-    ranks = [(total / sim_sums[item], item) for (item, total) in totals.iteritems()]
-    ranks.sort(key=lambda x: x[0], reverse=True)
-
-    return ranks[:n]
+    return scores if top_n is None else scores[:top_n]
 
 
 def get_average(person):
     global RATING
-    sum = 0
     count = 0
+    sum = 0.0
     for item in RATING[person]:
         sum += RATING[person][item]
         count += 1
-    return sum / count if count != 0 else 3
+    # return sum / count
+    return 0
 
 
-def get_rating(person, movie, n=20):
+def get_recommendations(person, top_n=5):
     global RATING
-    users = top_matches(person, n=n)
-    average_of_user = get_average(person)
-    sim_sums = 0
-    jiaquan_sums = 0
+    sim_sums = {}
+    jiaquan_sums = {}
+
+    average_user = get_average(person)
+    for other in RATING:
+        if other == person:
+            continue
+        sim = sim_pearson(person, other)
+        if sim == 0:
+            continue
+        sim = abs(sim)
+        average_other = get_average(other)
+        for item in RATING[other]:
+            if item not in RATING[person]:
+                jiaquan_sums.setdefault(item, 0)
+                jiaquan_sums[item] += (RATING[other][item] - average_other) * sim
+                sim_sums.setdefault(item, 0)
+                sim_sums[item] += sim
+    ranks = [(average_user + jiaquan / sim_sums[item], item) for (item, jiaquan) in jiaquan_sums.iteritems()]
+    ranks.sort(key=lambda x: x[0], reverse=True)
+
+    return ranks[:top_n]
+
+
+def get_rating(person, movie, top_n=None):
+    global RATING
+    users = top_matches(person, movie=movie, top_n=top_n)
+    average_user = get_average(person)
+    sim_sums = 0.0
+    jiaquan_sums = 0.0
     for sim, other in users:
-        average_of_other = get_average(other)
+        if sim == 0:
+            continue
+        average_other = get_average(other)
+        sim = abs(sim)
         sim_sums += sim
-        jiaquan_sums += (RATING[other][movie] - average_of_other) * sim
-    try:
-        return average_of_user + jiaquan_sums / sim_sums
-    except:
-        return average_of_user
+        jiaquan_sums += (RATING[other][movie] - average_other) * sim
+    return average_user + jiaquan_sums / sim_sums if sim_sums > 0 else average_user
 
 
 if __name__ == '__main__':
     init()
-    persons = top_matches('1')
+    persons = top_matches('1', top_n=10)
     print persons
-    recommendations = get_recommendations('1')
+    recommendations = get_recommendations('2')
     print recommendations
+    print get_rating('1', '3382')
