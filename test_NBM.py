@@ -2,40 +2,21 @@
 # coding=utf-8
 
 import os
-import csv
-import random
 import math
 from settings import DATA_DIR
+from utils import load_data, split_dataset
 
 FILENAME = os.path.join(DATA_DIR, 'pima-indians-diabetes.data.csv')
-#FILENAME = os.path.join(DATA_DIR, 'iris.csv')
-
-
-def load_csv(filename):
-    dataset = []
-    with open(filename, 'rb') as f:
-        reader = csv.reader(f)
-        for line in reader:
-            dataset.append([float(_) for _ in line])
-    return dataset
-
-
-def split_dataset(dataset, split_ratio=0.8):
-    train_size = int(len(dataset) * split_ratio)
-    train_set = []
-    test_set = dataset
-    for i in xrange(train_size):
-        index = random.randrange(len(test_set))
-        train_set.append(test_set.pop(index))
-    return train_set, test_set
+# FILENAME = os.path.join(DATA_DIR, 'iris.csv')
 
 
 def separate_by_class(dataset):
     separated = {}
     for vector in dataset:
-        if vector[-1] not in separated:
-            separated[vector[-1]] = []
-        separated[vector[-1]].append(vector)
+        classies = int(vector[-1])
+        if classies not in separated:
+            separated[classies] = []
+        separated[classies].append(vector)
     return separated
 
 
@@ -105,9 +86,13 @@ def get_accuracy(test_set, predictions):
     return (correct / float(len(test_set))) * 100.0
 
 
-dataset = load_csv(FILENAME)
-train_set, test_set = split_dataset(dataset, 0.7)
-summaries = summarize_by_class(train_set)
-predictions = get_predictions(summaries, test_set)
-probability = get_accuracy(test_set, predictions)
-print probability
+if __name__ == '__main__':
+    probability = 0.0
+    n = 10
+    for i in xrange(n):
+        dataset = load_data(FILENAME)
+        train_set, test_set = split_dataset(dataset, 0.8)
+        summaries = summarize_by_class(train_set)
+        predictions = get_predictions(summaries, test_set)
+        probability += get_accuracy(test_set, predictions)
+    print probability / n
