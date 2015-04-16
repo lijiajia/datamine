@@ -10,7 +10,11 @@ def load_data(filename):
     with open(filename, 'rb') as f:
         reader = csv.reader(f)
         for line in reader:
-            dataset.append([float(_) for _ in line])
+            try:
+                dataset.append([float(_) for _ in line])
+            except Exception as e:
+                print 'data format error: %s' % str(e)
+                continue
     return dataset
 
 
