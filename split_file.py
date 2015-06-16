@@ -1,28 +1,35 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+import sys
 import os
+import random
 from settings import DATA_DIR
 import csv
-import time
+
+csv.field_size_limit(sys.maxsize)
 
 
 def process():
-    start_time = int(time.time())
-    i = 0
+    user_ids = set()
+    news_ids = set()
     with open(os.path.join(DATA_DIR, 'train_data.txt'), 'rb') as f:
         reader = csv.reader(f, delimiter='\t')
-        for i, line in enumerate(reader):
-            i += 1
-            file_name = '%s.txt' % str(i + 1)
-            with open(os.path.join(os.path.dirname(__file__), file_name), 'wb') as f:
-                writer = csv.writer(f)
-                writer.writerow(line)
-            if i >= 1000:
-                break
-
-    cost_time = int(time.time()) - start_time
-    print 'cost time %d(s)' % cost_time
+        for line in reader:
+            try:
+                user_id, news_id = int(line[0]), int(line[1])
+                user_ids |= set([user_id])
+                news_ids |= set([news_id])
+            except:
+                pass
+    print len(list(user_ids)), len(list(news_ids))
+    with open('result_data/predict.csv', 'wb') as f:
+        writer = csv.writer(f)
+        writer.writerow(['userid', 'newsid'])
+        for user_id in list(user_ids):
+            i = random.randint(1, 6182)
+            news_id = (list(news_ids))[i]
+            writer.writerow([user_id, news_id])
 
 
 if __name__ == '__main__':
