@@ -54,12 +54,13 @@ def process():
     tftocard_dict = {}
     consume_dict = {}
     index = []
-    count = 0
     with open(os.path.join(DATA_DIR, 'user_balance_table.csv'), 'rb') as f:
         reader = csv.reader(f)
         reader.next()
         for line in reader:
             date = line[1]
+            if date < '20140601':
+                continue
             y_balance = int(line[3])
             purchase_all_amt = int(line[4])
             purchase_bal_amt = int(line[6])
@@ -75,7 +76,6 @@ def process():
             category_4 = int(line[17]) if consume_amt > 0 else 0
 
             if date not in y_balance_dict:
-                count += 1
                 y_balance_dict[date] = y_balance
                 purchase_all_dict[date] = purchase_all_amt
                 purchase_bal_dict[date] = purchase_bal_amt
@@ -98,35 +98,59 @@ def process():
 
     y_balance_list = []
     for (key, value) in sorted(y_balance_dict.iteritems(), key=lambda x: x[0]):
-        if convert_to_week(key) == 6:
-            y_balance_list.append(value)
+        y_balance_list.append(value)
 
     purchase_all_list = []
+    purchase_all = [0, 0, 0, 0, 0, 0, 0]
+    count = [0, 0, 0, 0, 0, 0, 0]
+    purchase_mean = [0, 0, 0, 0, 0, 0, 0]
     for (key, value) in sorted(purchase_all_dict.iteritems(), key=lambda x: x[0]):
-        if convert_to_week(key) == 6:
-            purchase_all_list.append(value)
+        i = convert_to_week(key)
+        purchase_all[i] += value
+        count[i] += 1
+        purchase_all_list.append(math.log10(value))
+    for i in xrange(0, 7):
+        purchase_mean[i] = purchase_all[i] / count[i]
 
     purchase_bal_list = []
     for (key, value) in sorted(purchase_bal_dict.iteritems(), key=lambda x: x[0]):
-        if convert_to_week(key) == 0:
-            purchase_bal_list.append(value)
+        purchase_bal_list.append(value)
 
     purchase_bank_list = []
     for (key, value) in sorted(purchase_bank_dict.iteritems(), key=lambda x: x[0]):
-        if convert_to_week(key) == 0:
-            purchase_bank_list.append(value)
+        purchase_bank_list.append(value)
 
     redeem_all_list = []
+    redeem_all = [0, 0, 0, 0, 0, 0, 0]
+    count = [0, 0, 0, 0, 0, 0, 0]
+    redeem_mean = [0, 0, 0, 0, 0, 0, 0]
     for (key, value) in sorted(redeem_all_dict.iteritems(), key=lambda x: x[0]):
-        redeem_all_list.append(value)
+        i = convert_to_week(key)
+        redeem_all[i] += value
+        count[i] += 1
+        redeem_all_list.append(math.log10(value))
+    for i in xrange(0, 7):
+        redeem_mean[i] = redeem_all[i] / count[i]
 
     for i in xrange(len(purchase_all_list)):
         index.append(i+1)
     plt.plot(index, purchase_all_list)
+    plt.plot(index, redeem_all_list)
     #plt.plot(index, y_balance_list)
     #plt.plot(index, purchase_bal_list)
     #plt.plot(index, purchase_bank_list)
     plt.savefig('res.jpg')
+
+    index = []
+    purchase_predict = []
+    redeem_predict = []
+    with open('tc_comp_predict_table.csv', 'wb') as f:
+        writer = csv.writer(f)
+        for date in xrange(20140901, 20140931):
+            i = convert_to_week(str(date))
+            purchase_predict.append(purchase_mean[i])
+            redeem_predict.append(redeem_mean[i])
+            writer.writerow([str(date), purchase_mean[i], redeem_mean[i]])
 
 if __name__ == '__main__':
     load_interest()
