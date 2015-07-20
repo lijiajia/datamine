@@ -18,20 +18,20 @@ from env import USER_AGENT_CHOICES
 
 HOST = 'http://www.dianping.com'
 FOOD_URL = 'http://www.dianping.com/search/category/%d/10'
+CITY_URL = 'http://www.dianping.com/citylist'
 DIAN_PING_DIR = os.path.join(BASE_DIR, 'dianping_data')
 
 PAT = re.compile(ur'[\(\（].+店[\)\）]')
 
 def crawler(url, i):
-    print url
     headers = {'Referer': HOST}
     headers['User-Agent'] = random.choice(USER_AGENT_CHOICES)
     r = requests.get(url, headers=headers, verify=False)
     if r.status_code != 200:
+        print url
         return
     soup = BeautifulSoup(r.content)
     title = soup.find('title').text
-    print title, len(title)
     title = title[0:-8]
     first_nav = soup.find('li', {'data-key': '10'})
     second_nav = first_nav.find('div')
@@ -42,13 +42,12 @@ def crawler(url, i):
         writer = csv.writer(f)
         for category in category_list[1:]:
             category_name = category.text
-            category_url = category.get('href', '')
+            category_root_url = category.get('href', '')
             for page in xrange(0, 50):
-                category_url = category_url + 'p%d' % (page + 1)
-                print category_url
+                category_url = category_root_url + 'p%d' % (page + 1)
                 r = requests.get(category_url, headers=headers, verify=False)
                 if r.status_code != 200:
-                    break
+                    continue
                 soup = BeautifulSoup(r.content)
                 try:
                     shop_list = soup.find('div', {'id': 'shop-all-list'}).findAll('li')
@@ -71,7 +70,6 @@ def crawler(url, i):
                                 if mean_price is not None:
                                     mean_price = mean_price.text
                         mean_price = mean_price[1:] if mean_price is not None else 0
-                        print mean_price
 
                         addr = ''
                         addr_info = shop.find('div', {'class': 'tag-addr'})
@@ -79,7 +77,6 @@ def crawler(url, i):
                             addr_info = addr_info.findAll('span', {'class': 'tag'})
                             if addr_info is not None and len(addr_info) > 0:
                                 addr = addr_info[-1].text
-                        print addr
 
                         kouwei = None
                         huanjing = None
@@ -103,24 +100,43 @@ def crawler(url, i):
                         kouwei = kouwei if kouwei is not None else 0.0
                         huanjing = huanjing if huanjing is not None else 0.0
                         fuwu = fuwu if fuwu is not None else 0.0
-                        print category_name, shop_name, full_name, mean_price, addr, kouwei, huanjing, fuwu
-                        break
+
                         writer.writerow([category_name, shop_name, full_name, mean_price, addr, kouwei, huanjing, fuwu])
                 except Exception as e:
-                    print category_name, category_url
-                    print str(e)
-                break
+                    with open(os.path.join(DIAN_PING_DIR, 'error.csv'), 'a') as fs:
+                        writer = csv.writer(fs)
+                        writer.writerow([category_name, category_url, str(e)])
             print '%s_%s completed' %(title, category_name)
-            break
     print '%d_%s is completed' % (i + 1, title)
 
 
+def city_crawler(url):
+    headers = {'Referer': HOST}
+    headers['User-Agent'] = random.choice(USER_AGENT_CHOICES)
+    r = requests.get(url, headers=headers, verify=False)
+    if r.status_code != 200:
+        print 'city request error: %s' % url
+        return
+    soup = BeautifulSoup(r.content)
+    city_tag = soup.find('ul', {'id': 'divArea'})
+    city_set = set()
+    if city_tag is not None:
+        city_list = city_tag.findAll('a')
+        with open(os.path.join(DIAN_PING_DIR, 'city_list.csv'), 'wb') as f:
+            writer = csv.writer(f)
+            for city in city_list:
+                city_name = city.text
+                if not u'更多'in city_name:
+                    city_set |= set([city_name])
+                    writer.writerow([city_name])
+    print len(list(city_set))
+
+
 if __name__ == '__main__':
-    '''pool = Pool(processes=8)
-    for i in xrange(0, 2610):
-        url = FOOD_URL % (i + 1)
-        pool.apply_async(crawler, (url, i,))
-        break
-    pool.close()
-    pool.join()'''
-    crawler(FOOD_URL % 1, 0)
+#    pool = Pool(processes=8)
+#    for i in xrange(89, 2510):
+#        url = FOOD_URL % (i + 1)
+#        pool.apply_async(crawler, (url, i,))
+#    pool.close()
+#    pool.join()
+#    city_crawler(CITY_URL)
